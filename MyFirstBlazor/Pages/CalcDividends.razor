@@ -20,13 +20,18 @@
             <input type="text" class="form-control mb-3" placeholder="Digite o ticker do FII" @bind="_fiiTicker" style="width:100%" />
             <div class="d-flex justify-content-center">
                 <button class="btn btn-primary" @onclick="LoadData">Buscar</button>
+                @*<label id="log" typ @bind="_log"></label>*@
+
             </div>
         </div>
     </div>
+    <br />
+    
     <div class="chart-container">
         @if (_config != null)
         {
-            <Chart Config="_config" @ref="_chart"></Chart>
+            <hr style="margin-top: 20px; margin-bottom: 20px;">
+            <Chart Config="_config" @ref="_chart" Height="200"></Chart>
         }
     </div>
 </div>
@@ -96,7 +101,7 @@
                     Title = new OptionsTitle
                     {
                         Display = true,
-                        Text = "Clique nos ativos para adicionar ou remover do Gráfico"
+                        Text = "Clique nos ativos para remover do Gráfico"
                     },
                     Tooltips = new Tooltips
                     {
@@ -106,19 +111,19 @@
                     Scales = new BarScales
                     {
                         XAxes = new List<CartesianAxis>
-        {
-                        new BarCategoryAxis
                         {
-                            Stacked = true
-                        }
-                    },
+                            new BarCategoryAxis
+                            {
+                                Stacked = true
+                            }
+                        },
                         YAxes = new List<CartesianAxis>
-        {
-                        new BarLinearCartesianAxis
                         {
-                            Stacked = true
+                            new BarLinearCartesianAxis
+                            {
+                                Stacked = true
+                            }
                         }
-                    }
                     }
                 }
             };
