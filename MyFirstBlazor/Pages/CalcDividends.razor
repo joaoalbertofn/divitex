@@ -1,0 +1,166 @@
+﻿@page "/"
+@using ChartJs.Blazor.BarChart
+@using ChartJs.Blazor.BarChart.Axes
+@using MyFirstBlazor.Data
+@using MyFirstBlazor.Models
+@using MyFirstBlazor.Helpres
+@using StatusInvestScraping.Services
+@using StatusInvestScraping.Models
+@inject IDialogService DialogService
+@inject BrapiService BrapiService
+@inject ILogger<Index> logger
+
+
+<PageTitle>Calculadora de Dividendos</PageTitle>
+<br />
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-sm-8 col-md-6">
+            <input type="text" class="form-control mb-3" placeholder="Digite o ticker do FII" @bind="_fiiTicker" style="width:100%" />
+            <div class="d-flex justify-content-center">
+                <button class="btn btn-primary" @onclick="LoadData">Buscar</button>
+            </div>
+        </div>
+    </div>
+    <div class="chart-container">
+        @if (_config != null)
+        {
+            <Chart Config="_config" @ref="_chart"></Chart>
+        }
+    </div>
+</div>
+
+
+@code{
+    // C#
+    private string _fiiTicker = "KNIP11";
+    private List<FII> _fiiAtual = new List<FII>();
+    private Chart _chart;
+    private BarConfig _config;
+
+    private async Task LoadData()
+    {
+        if (_fiiTicker != string.Empty)
+        {
+            IFIIService fiiService = new FIIService();
+
+            try
+            {
+                var fii = await fiiService.ObterFII(_fiiTicker);
+
+                if (fii.IsValid)
+                {
+                    //logger.LogInformation("Fii válido: " + fii.ToString());
+                    //Console.WriteLine("Fii válido: " + fii.ToString());
+                    logger.LogDebug("Fii válido: " + fii.ToString());
+                    _fiiAtual.Add(fii);
+                    SetupLast12MonthsChart();
+                }
+                else
+                {
+                    Console.WriteLine("Fii inválido: " + fii.ToString());
+                    logger.LogInformation("Fii inválido");
+                }
+            }
+            catch (Exception exception)
+            {
+                throw new Exception(exception.Message);
+            }
+
+        }
+
+    }
+
+    //private async Task OnInput(KeyboardEventArgs e)
+    //{
+    //    string inputText = e.Value.ToString();
+
+    //    if (e.Key == "Enter")
+    //    {
+    //        _fiiAtual.Clear();
+    //        await LoadData();
+    //        _fiiTicker = string.Empty;
+    //    }
+    //}
+
+    private void SetupLast12MonthsChart()
+    {
+        if (_config is null)
+        {
+            _config = new BarConfig
+            {
+                Options = new BarOptions
+                {
+                    Responsive = true,
+                    Title = new OptionsTitle
+                    {
+                        Display = true,
+                        Text = "Clique nos ativos para adicionar ou remover do Gráfico"
+                    },
+                    Tooltips = new Tooltips
+                    {
+                        Mode = InteractionMode.Index,
+                        Intersect = false
+                    },
+                    Scales = new BarScales
+                    {
+                        XAxes = new List<CartesianAxis>
+        {
+                        new BarCategoryAxis
+                        {
+                            Stacked = true
+                        }
+                    },
+                        YAxes = new List<CartesianAxis>
+        {
+                        new BarLinearCartesianAxis
+                        {
+                            Stacked = true
+                        }
+                    }
+                    }
+                }
+            };
+        }
+
+        //Clear the dataset to add all of then again.
+        _config.Data.Datasets.Clear();
+
+        ChartHelper colorHelper = new ChartHelper();
+        // Loop through the list of FII and create a dataset for each FII
+        foreach (var fii in _fiiAtual)
+        {
+            IDataset<double> dataset = new BarDataset<double>(fii.GetDividendData())
+            {
+                Label = fii.Ticker,
+                BackgroundColor = ColorUtil.FromDrawingColor(colorHelper.GetRandomColor(fii.Ticker))
+            };
+
+            //Set labels for the X Axis
+            string[] labels = fii.GetDividendMonths().ToArray();
+            //Loop for only 12 months
+            for (int i = 1; i < 12; i++)
+            {
+                string label = labels[i];
+                if (!_config.Data.Labels.Contains(label))
+                {
+                    _config.Data.Labels.Add(label);
+                }
+            }
+
+            _config.Data.Datasets.Add(dataset);
+        }
+    }
+}
+
+
+<style>
+    .container {
+        padding: 10px;
+    }
+
+    .chart-container {
+        margin-top: 20px;
+    }
+</style>

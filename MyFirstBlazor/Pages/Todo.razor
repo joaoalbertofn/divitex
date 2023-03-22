@@ -1,0 +1,53 @@
+﻿@page "/todo"
+
+<PageTitle>Todo Page</PageTitle>
+
+
+<div class="uk-margin-large-left uk-margin-large-right uk-text-center uk-margin-auto">
+    <div uk-grid class="uk-flex-center uk-text-middle uk-text-center uk-grid">
+        <div class="uk-text-middle uk-first-column">
+            <span class="uk-text-bold uk-text-middle">Dow Jones:&nbsp;</span>
+            <span class="uk-text-middle uk-success"> 1.06% </span>
+        </div>
+        <div class="uk-text-middle">
+            <span class="uk-text-bold uk-text-middle">S&amp;P 500:&nbsp;</span>
+            <span class="uk-text-middle uk-success"> 1.65% </span>
+        </div>
+        <div class="uk-text-middle">
+            <span class="uk-text-bold uk-text-middle">Nasdaq:&nbsp;</span>
+            <span class="uk-text-middle uk-success"> 2.30% </span>
+        </div>
+    </div>
+    <div>
+        <h1 class="uk-heading-small">Insights</h1>
+    </div>
+    <qualtrim-search>
+        <div>
+            <form novalidate class="uk-search uk-search-default boundary-align uk-panel uk-margin-auto">
+                <a href="javascript:void(0);" uk-search-icon class="uk-search-icon-flip uk-icon uk-search-icon">
+                    <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <circle fill="none" stroke="#000" stroke-width="1.1" cx="9" cy="9" r="7"></circle>
+                        <path fill="none" stroke="#000" stroke-width="1.1" d="M14,14 L18,18 L14,14 Z"></path>
+                    </svg>
+                </a>
+                <input type="search" placeholder="Search stock name or ticker" class="uk-search-input" aria-haspopup="true" aria-expanded="false">
+                <div uk-dropdown="mode: click; pos: bottom-justify; boundary: .boundary-align; boundary-align: true" class="uk-dropdown">
+                    <ul class="uk-list uk-list-divider">
+                        <!---->
+                    </ul>
+                    <!---->
+                    <!---->
+                </div>
+            </form>
+            <div class="uk-margin-top uk-margin-auto uk-width-large">
+                <!---->
+            </div>
+        </div>
+    </qualtrim-search>
+</div>
+
+
+
+@code{
+
+}
