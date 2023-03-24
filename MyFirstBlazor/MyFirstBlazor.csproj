@@ -26,8 +26,8 @@
     <None Include="Properties\PublishProfiles\DiviTex - Zip Deploy.pubxml" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\SIS\src\SIS.csproj">
-      <GlobalPropertiesToRemove></GlobalPropertiesToRemove>
-    </ProjectReference>
+    <Reference Include="SIS">
+      <HintPath>..\SIS.dll</HintPath>
+    </Reference>
   </ItemGroup>
 </Project>
