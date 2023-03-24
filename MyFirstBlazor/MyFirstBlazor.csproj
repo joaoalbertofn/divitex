@@ -26,14 +26,8 @@
     <None Include="Properties\PublishProfiles\DiviTex - Zip Deploy.pubxml" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="StatusInvestScraping">
-      <HintPath>..\StatusInvestScraping\src\obj\Debug\net7.0\StatusInvestScraping.dll</HintPath>
-    </Reference>
-    <Reference Include="StatusInvestScraping">
-      <HintPath>..\StatusInvestScraping.dll</HintPath>
-    </Reference>
-    <Reference Include="SIS">
-      <HintPath>..\SIS.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\..\SIS\src\SIS.csproj">
+      <GlobalPropertiesToRemove></GlobalPropertiesToRemove>
+    </ProjectReference>
   </ItemGroup>
 </Project>

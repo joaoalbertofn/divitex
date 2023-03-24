@@ -1,15 +1,53 @@
 ﻿@page "/"
+
 @using ChartJs.Blazor.BarChart
 @using ChartJs.Blazor.BarChart.Axes
+@using ChartJs.Blazor.LineChart
 @using MyFirstBlazor.Data
 @using MyFirstBlazor.Models
 @using MyFirstBlazor.Helpres
 @using StatusInvestScraping.Services
 @using StatusInvestScraping.Models
-@inject IDialogService DialogService
 @inject BrapiService BrapiService
 @inject ILogger<Index> logger
 
+
+<style>
+    .chartjs-render-monitor {
+        animation: chartjs-render-animation 1ms;
+    }
+
+    .container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-gap: 10px;
+    }
+
+    .item {
+        background-color: #eee;
+        padding: 10px;
+    }
+
+    @@media screen and (max-width: 768px) {
+        .row {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        }
+    }
+
+    @@media screen and (max-width: 480px) {
+        .row {
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        }
+    }
+
+    .chart-container {
+        padding-top: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+</style>
 
 <PageTitle>Calculadora de Dividendos</PageTitle>
 <br />
@@ -17,90 +55,157 @@
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-12 col-sm-8 col-md-6">
-            <input type="text" class="form-control mb-3" placeholder="Digite o ticker do FII" @bind="_fiiTicker" style="width:100%" />
-            <div class="d-flex justify-content-center">
-                <button class="btn btn-primary" @onclick="LoadData">Buscar</button>
-                @*<label id="log" typ @bind="_log"></label>*@
+
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudAutocomplete T="string" Label="Digite o ticker do FII ou Ação"
+                                     @bind-Value="_fiiTicker" SearchFunc="@Search1"
+                                     AdornmentIcon="@Icons.Material.Filled.Search"
+                                     AdornmentColor="Color.Primary" style="width:100%" />
+                </MudItem>
+            </MudGrid>
+            <br />
+
+            <div class="d-flex flex-column align-items-center">
+                <button class="btn btn-primary" disabled="@IsLoading" @onclick="LoadData">Adicionar</button>
+                <br />
+                @if (IsLoading)
+                {
+                    <span class="spinner-border spinner-border-sm"></span>
+                }
 
             </div>
+
         </div>
-    </div>
-    
-    <div class="chart-container">
+
         @if (_config != null)
         {
-            <hr style="margin-top: 30px; margin-bottom: 10px;">
-            <Chart Config="_config" @ref="_chart" Height="250"></Chart>
+            <hr class="d-sm-none" style="margin-top: 10px; margin-bottom: 10px; border: 0; border-top: 1px solid #ccc; width: 100%">
+
+            <div class="chart-container">
+                <Chart Config="_config" @ref="_chart" Height="400" Width="410"></Chart>
+            </div>
         }
+
     </div>
+
 </div>
 
 
+
 @code{
+
+
+
+    #region Pequisa de Tickers com autocomplete
+
+    private List<string> _tickers;
+
+    private async Task<IEnumerable<string>> Search1(string value)
+    {
+        // In real life use an asynchronous function for fetching data from an api.
+        if (_tickers is null)
+            _tickers = await BrapiService.GetAvaliableTickers();
+
+        // if text is null or empty, show complete list
+        if (string.IsNullOrEmpty(value))
+            return _tickers;
+        return _tickers.Where(x => x.StartsWith(value, StringComparison.InvariantCultureIgnoreCase));
+    }
+
+    #endregion
+
+
     // C#
-    private string _fiiTicker = "KNIP11";
-    private List<FII> _fiiAtual = new List<FII>();
+    private bool IsLoading = false;
+    IFIIService fiiService = new FIIService();
+    private string _fiiTicker;
+    private List<FII> _fiisAtuais = new List<FII>();
     private Chart _chart;
+    //private Chart _chart2;
+    //private Chart _chart3;
     private BarConfig _config;
+    //private BarConfig _config2;
+    //private BarConfig _config3;
 
     private async Task LoadData()
     {
-        if (_fiiTicker != string.Empty)
+        if (_fiiTicker != null && _fiiTicker != string.Empty)
         {
-            IFIIService fiiService = new FIIService();
+            IsLoading = true;
 
-            try
+            //for testing
+            if (_fiiTicker == "10fiis")
             {
-                var fii = await fiiService.ObterFII(_fiiTicker);
+                await LoadTests();
+            }
+            else
+            {
 
-                if (fii.IsValid)
+                try
                 {
-                    //logger.LogInformation("Fii válido: " + fii.ToString());
-                    //Console.WriteLine("Fii válido: " + fii.ToString());
-                    logger.LogDebug("Fii válido: " + fii.ToString());
-                    _fiiAtual.Add(fii);
-                    SetupLast12MonthsChart();
+                    var fii = await fiiService.ObterFII(_fiiTicker);
+
+                    if (fii.IsValid)
+                    {
+                        logger.LogDebug("Fii válido: " + fii.ToString());
+                        _fiisAtuais.Add(fii);
+                        SetupLast12MonthsChart();
+                    }
+                    else
+                    {
+                        Console.WriteLine("Fii inválido: " + fii.ToString());
+                        logger.LogInformation("Fii inválido");
+                    }
                 }
-                else
+                catch (Exception exception)
                 {
-                    Console.WriteLine("Fii inválido: " + fii.ToString());
-                    logger.LogInformation("Fii inválido");
+                    throw new Exception(exception.Message);
                 }
             }
-            catch (Exception exception)
-            {
-                throw new Exception(exception.Message);
-            }
 
+            IsLoading = false;
         }
 
     }
 
-    //private async Task OnInput(KeyboardEventArgs e)
-    //{
-    //    string inputText = e.Value.ToString();
 
-    //    if (e.Key == "Enter")
-    //    {
-    //        _fiiAtual.Clear();
-    //        await LoadData();
-    //        _fiiTicker = string.Empty;
-    //    }
-    //}
+    private async Task LoadTests()
+    {
+        try
+        {
+
+            string[] lstTickers = {"irdm11","cpts11", "rbrf11", "btlg11",
+                                    "knsc11", "tgar11", "hglg11", "xpml11",
+                                    "hsml11", "trxf11" };
+            //string[] lstTickers = {"irdm11"};
+
+            _fiisAtuais = await fiiService.ObterFIIs(lstTickers);
+            SetupLast12MonthsChart();
+        }
+        catch (Exception exception)
+        {
+            throw new Exception(exception.Message);
+        }
+    }
 
     private void SetupLast12MonthsChart()
     {
         if (_config is null)
         {
-            _config = new BarConfig
+            _config = new BarConfig(horizontal: true)
             {
                 Options = new BarOptions
                 {
-                    Responsive = true,
+                    Responsive = false,
+                    Legend = new Legend
+                    {
+                        Position = ChartJs.Blazor.Common.Enums.Position.Top
+                    },
                     Title = new OptionsTitle
                     {
                         Display = true,
-                        Text = "Clique nos ativos para remover do Gráfico"
+                        Text = "Distribuição de Dividendos dos ultimos 12m"
                     },
                     Tooltips = new Tooltips
                     {
@@ -109,15 +214,16 @@
                     },
                     Scales = new BarScales
                     {
-                        XAxes = new List<CartesianAxis>
-                        {
+
+                        YAxes = new List<CartesianAxis>
+                {
                             new BarCategoryAxis
                             {
                                 Stacked = true
                             }
                         },
-                        YAxes = new List<CartesianAxis>
-                        {
+                        XAxes = new List<CartesianAxis>
+                {
                             new BarLinearCartesianAxis
                             {
                                 Stacked = true
@@ -132,18 +238,31 @@
         _config.Data.Datasets.Clear();
 
         ChartHelper colorHelper = new ChartHelper();
+
+        //IDataset<double> totalsDataset = new LineDataset<double>();
+
         // Loop through the list of FII and create a dataset for each FII
-        foreach (var fii in _fiiAtual)
+        foreach (var fii in _fiisAtuais)
         {
-            IDataset<double> dataset = new BarDataset<double>(fii.GetDividendData())
+            IDataset<double> barsDataset = new BarDataset<double>(fii.GetDividendData(), horizontal: true)
             {
                 Label = fii.Ticker,
-                BackgroundColor = ColorUtil.FromDrawingColor(colorHelper.GetRandomColor(fii.Ticker))
+                BackgroundColor = ColorUtil.FromDrawingColor(colorHelper.GetRandomColor(fii.Ticker)),
+                BorderWidth = 1
             };
+
+            //IDataset<string> barsDataset = new BarDataset<string>(fii.GetDividendDataBR(), horizontal: true)
+            //{
+            //    Label = fii.Ticker,
+            //    BackgroundColor = ColorUtil.FromDrawingColor(colorHelper.GetRandomColor(fii.Ticker)),
+            //    BorderWidth = 1
+            //};
+
 
             //Set labels for the X Axis
             string[] labels = fii.GetDividendMonths().ToArray();
-            //Loop for only 12 months
+
+            ////Loop for only 12 months
             for (int i = 1; i < 12; i++)
             {
                 string label = labels[i];
@@ -151,20 +270,14 @@
                 {
                     _config.Data.Labels.Add(label);
                 }
+
             }
 
-            _config.Data.Datasets.Add(dataset);
+            _config.Data.Datasets.Add(barsDataset);
+            //_config.Data.Datasets.Add(totalsDataset);
+            //_chart.Update();
         }
     }
 }
 
 
-<style>
-    .container {
-        padding: 10px;
-    }
-
-    .chart-container {
-        margin-top: 20px;
-    }
-</style>
