@@ -1,5 +1,6 @@
 ﻿@page "/"
 
+@using System.Globalization
 @using ChartJs.Blazor.BarChart
 @using ChartJs.Blazor.BarChart.Axes
 @using ChartJs.Blazor.LineChart
@@ -13,9 +14,54 @@
 
 
 <style>
+    /* General Styles */
+
     .chartjs-render-monitor {
         animation: chartjs-render-animation 1ms;
     }
+
+    .chart-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 10px;
+    }
+
+        .chart-container > * {
+            margin-bottom: 10px;
+        }
+
+    .table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    .th-centered {
+        text-align: center;
+        border: 1px solid black;
+    }
+
+    .td-centered {
+        border: 1px solid black;
+        text-align: center;
+    }
+
+    .table th {
+        background-color: #007bff;
+        color: #fff;
+    }
+
+    .table td button {
+        display: block;
+        margin: 0 auto;
+    }
+
+    .table-container {
+        height: 150px;
+        overflow: scroll;
+    }
+
+    /* Grid Styles */
 
     .container {
         display: grid;
@@ -29,24 +75,60 @@
     }
 
     @@media screen and (max-width: 768px) {
-        .row {
+        .container {
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         }
     }
 
     @@media screen and (max-width: 480px) {
-        .row {
+        .container {
             grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
         }
     }
 
-    .chart-container {
-        padding-top: 10px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
+    @@media screen and (min-width: 769px) {
+        .chart-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-gap: 10px;
+            align-items: flex-start;
+        }
     }
 
+    @@media screen and (max-width: 768px) {
+        .chart-container {
+            flex-direction: column;
+            align-items: center;
+        }
+
+            .chart-container > * {
+                width: 100%;
+                max-width: 400px;
+            }
+    }
+
+    /* Table Styles */
+
+    .table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+        .table th,
+        .table td {
+            border: 1px solid black;
+            padding: 8px;
+        }
+
+        .table thead th {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+
+        .table th {
+            background-color: #e8e8e8;
+        }
 </style>
 
 <PageTitle>Calculadora de Dividendos</PageTitle>
@@ -74,17 +156,41 @@
                     <span class="spinner-border spinner-border-sm"></span>
                 }
 
+                @if (_config != null)
+                {
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Ticker</th>
+                                <th>Valor</th>
+                                <th>P/Vp</th>
+                                <th>Remover</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in _fiisAtuais)
+                            {
+                                <tr>
+                                    <td>@item.Ticker</td>
+                                    <td>@item.ValorAtual.ToString("C", new CultureInfo("pt-BR"))</td>
+                                    <td>@item.Pvp</td>
+                                    <td><button class="btn btn-primary" @onclick="@(() => Remove(item))">Remover</button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
             </div>
-
         </div>
 
-        @if (_config != null)
+        @if (_fiisAtuais.Count > 0)
         {
-            <hr class="d-sm-none" style="margin-top: 10px; margin-bottom: 10px; border: 0; border-top: 1px solid #ccc; width: 100%">
-
             <div class="chart-container">
-                <Chart Config="_config" @ref="_chart" Height="400" Width="410"></Chart>
+                <hr class="d-sm-none" style="margin-top: 10px; margin-bottom: 10px; border: 0; border-top: 1px solid #ccc; width: 100%">
+                <Chart Config="_config" @ref="_chart" Height="400"></Chart>
             </div>
+
+
         }
 
     </div>
@@ -95,6 +201,11 @@
 
 @code{
 
+    private void Remove(FII item)
+    {
+        _fiisAtuais.Remove(item);
+        SetupLast12MonthsChart();
+    }
 
 
     #region Pequisa de Tickers com autocomplete
@@ -117,6 +228,7 @@
 
 
     // C#
+    private CultureInfo _CultureBr = new CultureInfo("pt-BR");
     private bool IsLoading = false;
     IFIIService fiiService = new FIIService();
     private string _fiiTicker;
@@ -205,7 +317,7 @@
                     Title = new OptionsTitle
                     {
                         Display = true,
-                        Text = "Distribuição de Dividendos dos ultimos 12m"
+                        Text = "Proventos dos últimos 12m (para 1 cota)"
                     },
                     Tooltips = new Tooltips
                     {
@@ -216,14 +328,14 @@
                     {
 
                         YAxes = new List<CartesianAxis>
-                {
+{
                             new BarCategoryAxis
                             {
                                 Stacked = true
                             }
                         },
                         XAxes = new List<CartesianAxis>
-                {
+{
                             new BarLinearCartesianAxis
                             {
                                 Stacked = true
