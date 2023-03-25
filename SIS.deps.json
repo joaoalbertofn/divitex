@@ -7,7 +7,7 @@
   "targets": {
     ".NETStandard,Version=v2.1": {},
     ".NETStandard,Version=v2.1/": {
-      "SIS/1.0.1": {
+      "SIS/1.1.0": {
         "dependencies": {
           "HtmlAgilityPack": "1.11.46"
         },
@@ -26,7 +26,7 @@
     }
   },
   "libraries": {
-    "SIS/1.0.1": {
+    "SIS/1.1.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
