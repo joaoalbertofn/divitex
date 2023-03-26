@@ -7,14 +7,17 @@
 @using MyFirstBlazor.Data
 @using MyFirstBlazor.Models
 @using MyFirstBlazor.Helpres
-@using StatusInvestScraping.Services
-@using StatusInvestScraping.Models
+@using SIS.Services
+@using SIS.Models
 @inject BrapiService BrapiService
 @inject ILogger<Index> logger
 
 
 <style>
     /* General Styles */
+    .shadow {
+        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2);
+    }
 
     .chartjs-render-monitor {
         animation: chartjs-render-animation 1ms;
@@ -103,7 +106,7 @@
 
             .chart-container > * {
                 width: 100%;
-                max-width: 400px;
+                max-width: 500px;
             }
     }
 
@@ -117,7 +120,9 @@
         .table th,
         .table td {
             border: 1px solid black;
-            padding: 8px;
+            padding: 2px;
+            text-align: center;
+            vertical-align: middle; /* center text vertically */
         }
 
         .table thead th {
@@ -129,6 +134,17 @@
         .table th {
             background-color: #e8e8e8;
         }
+
+    .btn-small {
+        height: 28px;
+    }
+
+
+    .table td,
+    .table th {
+        padding: 1px; /* Decrease padding to reduce row height */
+        font-size: 15px; /* Adjust font size to fit content */
+    }
 </style>
 
 <PageTitle>Calculadora de Dividendos</PageTitle>
@@ -141,7 +157,7 @@
             <MudGrid>
                 <MudItem xs="12">
                     <MudAutocomplete T="string" Label="Digite o ticker do FII ou Ação"
-                                     @bind-Value="_fiiTicker" SearchFunc="@Search1"
+                                     @bind-Value="_ativoTicker" SearchFunc="@Search1"
                                      AdornmentIcon="@Icons.Material.Filled.Search"
                                      AdornmentColor="Color.Primary" style="width:100%" />
                 </MudItem>
@@ -156,46 +172,60 @@
                     <span class="spinner-border spinner-border-sm"></span>
                 }
 
-                @if (_config != null)
-                {
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Ticker</th>
-                                <th>Valor</th>
-                                <th>P/Vp</th>
-                                <th>Remover</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var item in _fiisAtuais)
-                            {
-                                <tr>
-                                    <td>@item.Ticker</td>
-                                    <td>@item.ValorAtual.ToString("C", new CultureInfo("pt-BR"))</td>
-                                    <td>@item.Pvp</td>
-                                    <td><button class="btn btn-primary" @onclick="@(() => Remove(item))">Remover</button></td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                }
             </div>
-        </div>
 
-        @if (_fiisAtuais.Count > 0)
-        {
-            <div class="chart-container">
+            @if (_configDivid12Meses != null)
+            {
                 <hr class="d-sm-none" style="margin-top: 10px; margin-bottom: 10px; border: 0; border-top: 1px solid #ccc; width: 100%">
-                <Chart Config="_config" @ref="_chart" Height="400"></Chart>
-            </div>
+                <table class="table shadow">
+                    <thead>
+                        <tr>
+                            <th class="text-center">Ticker</th>
+                            <th class="text-center">Valor</th>
+                            <th class="text-center">P/Vp</th>
+                            <th class="text-center">Remover</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in _carteiraAtual.fiis)
+                        {
+                            <tr>
+                                <td class="text-center"><strong>@item.fii.Ticker</strong></td>
+                                <td class="text-center">@item.fii.ValorAtual.ToString("C", new CultureInfo("pt-BR"))</td>
+                                <td class="text-center">@item.fii.Pvp</td>
+                                <td class="text-center"><button class="btn btn-primary btn-small" @onclick="@(() => Remove(item.fii))">X</button></td>
+                            </tr>
+                        }
+                        @foreach (var item in _carteiraAtual.acoes)
+                        {
+                            <tr>
+                                <td class="text-center"><strong>@item.acao.Ticker</strong></td>
+                                <td class="text-center">@item.acao.ValorAtual.ToString("C", new CultureInfo("pt-BR"))</td>
+                                <td class="text-center">@item.acao.Pvp</td>
+                                <td class="text-center"><button class="btn btn-primary btn-small" @onclick="@(() => Remove(item.acao))">X</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+        <div class="d-flex flex-column align-items-center">
 
-
-        }
-
+            @if (_carteiraAtual.PossuiLancamentos())
+            {
+                <div class="chart-container">
+                    <Chart Config="_configDivid12Meses" @ref="_chartDivid12Meses" Height="400" Width="400" />
+                    <Chart Config="_configThisMonthDividend" @ref="_chartThisMonthDividend" Height="400" Width="400" />
+                </div>
+            }
+        </div>
     </div>
 
 </div>
+
+<br />
+<br />
+
 
 
 
@@ -203,8 +233,15 @@
 
     private void Remove(FII item)
     {
-        _fiisAtuais.Remove(item);
+        _carteiraAtual.Remove(item);
         SetupLast12MonthsChart();
+        SetupThisMonthDividChart();
+    }
+    private void Remove(Acao item)
+    {
+        _carteiraAtual.Remove(item);
+        SetupLast12MonthsChart();
+        SetupThisMonthDividChart();
     }
 
 
@@ -228,41 +265,45 @@
 
 
     // C#
+    ChartHelper colorHelper = new ChartHelper();
     private CultureInfo _CultureBr = new CultureInfo("pt-BR");
+
     private bool IsLoading = false;
     IFIIService fiiService = new FIIService();
-    private string _fiiTicker;
-    private List<FII> _fiisAtuais = new List<FII>();
-    private Chart _chart;
-    //private Chart _chart2;
-    //private Chart _chart3;
-    private BarConfig _config;
-    //private BarConfig _config2;
-    //private BarConfig _config3;
+    private string _ativoTicker;
+    private Carteira _carteiraAtual = new Carteira();
+
+    private Chart _chartDivid12Meses;
+    private Chart _chartThisMonthDividend;
+    private BarConfig _configDivid12Meses;
+    private BarConfig _configThisMonthDividend;
+
 
     private async Task LoadData()
     {
-        if (_fiiTicker != null && _fiiTicker != string.Empty)
+        if (_ativoTicker != null && _ativoTicker != string.Empty)
         {
             IsLoading = true;
 
             //for testing
-            if (_fiiTicker == "10fiis")
+            if (_ativoTicker == "10fiis")
             {
                 await LoadTests();
             }
             else
             {
-
                 try
                 {
-                    var fii = await fiiService.ObterFII(_fiiTicker);
+                    var fii = await fiiService.ObterFII(_ativoTicker);
 
                     if (fii.IsValid)
                     {
                         logger.LogDebug("Fii válido: " + fii.ToString());
-                        _fiisAtuais.Add(fii);
+                        _carteiraAtual.Add(fii);
+
+                        // Setup charts
                         SetupLast12MonthsChart();
+                        SetupThisMonthDividChart();
                     }
                     else
                     {
@@ -275,10 +316,8 @@
                     throw new Exception(exception.Message);
                 }
             }
-
             IsLoading = false;
         }
-
     }
 
 
@@ -286,14 +325,16 @@
     {
         try
         {
-
             string[] lstTickers = {"irdm11","cpts11", "rbrf11", "btlg11",
                                     "knsc11", "tgar11", "hglg11", "xpml11",
                                     "hsml11", "trxf11" };
-            //string[] lstTickers = {"irdm11"};
 
-            _fiisAtuais = await fiiService.ObterFIIs(lstTickers);
+            List<FII> listaFiis = await fiiService.ObterFIIs(lstTickers);
+
+            _carteiraAtual.Add(listaFiis);
+
             SetupLast12MonthsChart();
+            SetupThisMonthDividChart();
         }
         catch (Exception exception)
         {
@@ -303,17 +344,13 @@
 
     private void SetupLast12MonthsChart()
     {
-        if (_config is null)
+        if (_configDivid12Meses is null)
         {
-            _config = new BarConfig(horizontal: true)
+            _configDivid12Meses = new BarConfig()
             {
                 Options = new BarOptions
                 {
                     Responsive = false,
-                    Legend = new Legend
-                    {
-                        Position = ChartJs.Blazor.Common.Enums.Position.Top
-                    },
                     Title = new OptionsTitle
                     {
                         Display = true,
@@ -327,14 +364,14 @@
                     Scales = new BarScales
                     {
 
-                        YAxes = new List<CartesianAxis>
+                        XAxes = new List<CartesianAxis>
 {
                             new BarCategoryAxis
                             {
                                 Stacked = true
                             }
                         },
-                        XAxes = new List<CartesianAxis>
+                        YAxes = new List<CartesianAxis>
 {
                             new BarLinearCartesianAxis
                             {
@@ -347,48 +384,141 @@
         }
 
         //Clear the dataset to add all of then again.
-        _config.Data.Datasets.Clear();
+        _configDivid12Meses.Data.Datasets.Clear();
 
-        ChartHelper colorHelper = new ChartHelper();
-
-        //IDataset<double> totalsDataset = new LineDataset<double>();
+        //// Monthly totals
+        Dictionary<int, double> monthlyData = Enumerable.Range(0, 12).ToDictionary(x => x, x => 0.0);
 
         // Loop through the list of FII and create a dataset for each FII
-        foreach (var fii in _fiisAtuais)
+        for (int x = 0; x < _carteiraAtual.fiis.Count; x++)
         {
-            IDataset<double> barsDataset = new BarDataset<double>(fii.GetDividendData(), horizontal: true)
+            IDataset<double> barsDataset = new BarDataset<double>(_carteiraAtual.fiis[x].fii.GetDividendData())
             {
-                Label = fii.Ticker,
-                BackgroundColor = ColorUtil.FromDrawingColor(colorHelper.GetRandomColor(fii.Ticker)),
-                BorderWidth = 1
+                Label = _carteiraAtual.fiis[x].fii.Ticker,
+                BackgroundColor = colorHelper.GetColors()[x],
+                BorderWidth = 1,
+                Order = 2
             };
-
-            //IDataset<string> barsDataset = new BarDataset<string>(fii.GetDividendDataBR(), horizontal: true)
-            //{
-            //    Label = fii.Ticker,
-            //    BackgroundColor = ColorUtil.FromDrawingColor(colorHelper.GetRandomColor(fii.Ticker)),
-            //    BorderWidth = 1
-            //};
 
 
             //Set labels for the X Axis
-            string[] labels = fii.GetDividendMonths().ToArray();
+            List<string> labels = _carteiraAtual.fiis[x].fii.GetDividendMonths();
+
+            //if(monthlyData.Count == 0)
+            //    monthlyData = labels.Zip(Enumerable.Repeat(0.0, 12), (m, v) => new { Key = m, Value = v }).ToDictionary(x => x.Key, x => x.Value);
 
             ////Loop for only 12 months
-            for (int i = 1; i < 12; i++)
+            for (int i = 0; i < 12; i++)
             {
+                //Adds the dividend of each month of each fii
+                monthlyData[i] += _carteiraAtual.fiis[x].fii.Dividendos[i].Valor;
+                //Rounds its value to two decimal points
+                monthlyData[i] = Math.Round(monthlyData[i], 2);
+
                 string label = labels[i];
-                if (!_config.Data.Labels.Contains(label))
+                if (!_configDivid12Meses.Data.Labels.Contains(label))
                 {
-                    _config.Data.Labels.Add(label);
+                    _configDivid12Meses.Data.Labels.Add(label);
                 }
 
             }
 
-            _config.Data.Datasets.Add(barsDataset);
-            //_config.Data.Datasets.Add(totalsDataset);
-            //_chart.Update();
+            _configDivid12Meses.Data.Datasets.Add(barsDataset);
         }
+
+
+        // Cria uma linha com a media
+        List<double> reversedList = monthlyData.Values.ToList();
+        reversedList.Reverse();
+
+        IDataset<double> lineDataset = new LineDataset<double>(reversedList)
+        {
+            Label = "Total do Mês",
+            Fill = false,
+            BorderColor = "#007bff",
+            BorderWidth = 2,
+            Order = 1
+        };
+
+        _configDivid12Meses.Data.Datasets.Add(lineDataset);
+    }
+
+    private void SetupThisMonthDividChart()
+    {
+        if (_configThisMonthDividend is null)
+        {
+            _configThisMonthDividend = new BarConfig()
+            {
+                Options = new BarOptions
+                {
+                    Responsive = false,
+
+                    Legend = new Legend
+                    {
+                        Position = ChartJs.Blazor.Common.Enums.Position.Top,
+                        Display = false
+                    },
+                    Title = new OptionsTitle
+                    {
+                        Display = true,
+                        Text = "Dividendos deste mês: " + DateTime.Now.ToString("MMMM")
+                    },
+                    Tooltips = new Tooltips
+                    {
+                        Enabled = true
+                    }
+
+                }
+            };
+        }
+
+        //Clear the dataset to add all of then again.
+        _configThisMonthDividend.Data.Datasets.Clear();
+        _configThisMonthDividend.Data.Labels.Clear();
+
+        //Lista com todos dividendos
+        List<double> listaDividendos = new List<double>();
+        //Media de dividendos
+        List<double> mediaDoMes = new List<double>();
+
+        // Loop through the list of FII and create a dataset for each FII
+        foreach (LancamentoFII lanc in _carteiraAtual.fiis.OrderByDescending(f => f.fii.GetCurrentMonthDividend()))
+        {
+            listaDividendos.Add(lanc.fii.GetCurrentMonthDividend());
+            _configThisMonthDividend.Data.Labels.Add(lanc.fii.Ticker);
+        }
+
+        IDataset<double> barsDataset = new BarDataset<double>(listaDividendos)
+        {
+            Label = "Dividendo",
+            BackgroundColor = colorHelper.GetColors(),
+            BorderWidth = 1,
+            Order = 2
+        };
+
+        _configThisMonthDividend.Data.Datasets.Add(barsDataset);
+
+        // Calcula media e adiciona na lista
+        double avgDividendos = Math.Round(listaDividendos.Average(), 2); // Round to 2 decimal points
+
+        foreach (double div in listaDividendos)
+        {
+            mediaDoMes.Add(avgDividendos);
+        }
+
+        // Cria uma linha com a media
+        IDataset<double> lineDataset = new LineDataset<double>(mediaDoMes)
+        {
+            Label = "Média do Mês",
+            Fill = false,
+            BorderColor = "#007bff",
+            BorderWidth = 2,
+            Order = 1
+            //LineTension = 0.1
+        };
+
+        _configThisMonthDividend.Data.Datasets.Add(lineDataset);
+
     }
 }
 
