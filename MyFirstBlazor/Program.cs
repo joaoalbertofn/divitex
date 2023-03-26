@@ -16,7 +16,7 @@ builder.Services.AddServerSideBlazor(options => {
     options.DetailedErrors = true;
 });
 
-CultureInfo.CurrentCulture = new CultureInfo("pt-BR"); // set culture for entire application
+//CultureInfo.CurrentCulture = new CultureInfo("pt-BR"); // set culture for entire application
 
 var app = builder.Build();
 
