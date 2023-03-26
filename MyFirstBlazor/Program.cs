@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using System.Globalization;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Hosting;
 using MudBlazor.Services;
 using MyFirstBlazor.Data;
 
@@ -14,16 +16,12 @@ builder.Services.AddServerSideBlazor(options => {
     options.DetailedErrors = true;
 });
 
-
+CultureInfo.CurrentCulture = new CultureInfo("pt-BR"); // set culture for entire application
 
 var app = builder.Build();
 
-//app.UseCors(cors => cors
-//.AllowAnyMethod()
-//.AllowAnyHeader()
-//.SetIsOriginAllowed(origin => true)
-//.AllowCredentials()
-//);
+
+
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
