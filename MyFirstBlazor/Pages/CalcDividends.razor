@@ -404,7 +404,7 @@
             //Set labels for the X Axis
             List<string> labels = _carteiraAtual.fiis[x].fii.GetDividendMonths();
 
-            
+
 
             ////Loop for only 12 months
             for (int i = 0; i < 12; i++)
@@ -412,7 +412,7 @@
                 //Adds the dividend of each month of each fii
                 monthlyData[i] += _carteiraAtual.fiis[x].fii.Dividendos[i].Valor;
                 //Rounds its value to two decimal points
-                monthlyData[i] = Math.Round(monthlyData[i], 2);
+                //monthlyData[i] = Math.Round(monthlyData[i], 2);
 
                 string label = labels[i];
                 if (!_configDivid12Meses.Data.Labels.Contains(label))
