@@ -16,11 +16,7 @@ builder.Services.AddServerSideBlazor(options => {
     options.DetailedErrors = true;
 });
 
-//CultureInfo.CurrentCulture = new CultureInfo("pt-BR"); // set culture for entire application
-
 var app = builder.Build();
-
-
 
 
 // Configure the HTTP request pipeline.
@@ -31,12 +27,11 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+
+
 app.UseHttpsRedirection();
-
 app.UseStaticFiles();
-
 app.UseRouting();
-
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
 
